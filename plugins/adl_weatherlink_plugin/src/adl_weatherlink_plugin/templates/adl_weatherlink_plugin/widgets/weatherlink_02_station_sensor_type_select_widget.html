@@ -1,0 +1,192 @@
+<div>
+    <div class="w-field__errors" style="margin-bottom: 10px">
+        <p class="error-message" id="error-message-sensor-type" style="display: none"></p>
+    </div>
+
+    <div style="display: flex;align-items: center">
+        <select name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}>
+        </select>
+        <div id="spinner-sensor-type" style="margin-left: 10px;display: none">
+            <svg class="icon icon-spinner w-w-8 w-h-8" aria-hidden="true">
+                <use href="#icon-spinner"></use>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        class StationSensorTypeSelectWidget {
+            #defaultOption = {label: "---------", value: ""};
+
+            constructor({
+                            widgetId,
+                            stationSensorTypesUrl,
+                            initialStationSensorType,
+                            networkConnectionInputId,
+                            stationInputId,
+                            errorMessageElId,
+                            spinnerId,
+                            defaultOption,
+                        }) {
+
+                this.widgetId = widgetId;
+                this.stationSensorTypesUrl = stationSensorTypesUrl;
+                this.initialStationSensorType = initialStationSensorType;
+                this.#defaultOption = defaultOption || this.#defaultOption;
+
+                this.selectInput = document.getElementById(this.widgetId);
+                this.networkConnectionInput = document.getElementById(networkConnectionInputId);
+                this.stationInput = document.getElementById(stationInputId);
+                this.errorMessageEl = document.getElementById(errorMessageElId);
+                this.spinner = document.getElementById(spinnerId);
+
+                if (!this.selectInput || !this.networkConnectionInput || !this.stationInput || !this.errorMessageEl || !this.spinner) {
+                    throw new Error('One or more required DOM elements are missing.');
+                }
+
+                this.debouncedSetStationSensorTypeOptions = this.debounce(this.debouncedSetStationSensorTypeOptions.bind(this), 300);
+                this.init();
+            }
+
+            async init() {
+                const selectedNetworkConnectionId = this.networkConnectionInput.value;
+                const selectedStationId = this.stationInput.value;
+
+                if (selectedNetworkConnectionId && selectedStationId) {
+                    await this.debouncedSetStationSensorTypeOptions(selectedNetworkConnectionId, selectedStationId);
+                }
+
+                this.networkConnectionInput.addEventListener('change', (event) => {
+                    this.reset()
+                    this.clearInitial()
+                });
+
+                this.stationInput.addEventListener('change', (event) => {
+                    this.reset()
+
+                    const selectedNetworkConnectionId = this.networkConnectionInput.value;
+                    this.debouncedSetStationSensorTypeOptions(selectedNetworkConnectionId, event.target.value);
+                });
+            }
+
+            clearInitial() {
+                this.initialStationSensorType = null;
+            }
+
+            reset() {
+                this.clearSelectInput();
+                this.clearError();
+            }
+
+            showSpinner() {
+                this.spinner.style.display = 'block';
+            }
+
+            hideSpinner() {
+                this.spinner.style.display = 'none';
+            }
+
+            setSelectedOption(value) {
+                this.selectInput.value = value;
+            }
+
+            async debouncedSetStationSensorTypeOptions(selectedNetworkConnectionId, selectedStationId) {
+                this.clearSelectInput();
+
+                if (selectedNetworkConnectionId && selectedStationId) {
+                    this.showSpinner();
+
+                    const response = await this.getStationSensorTypesForConnection(selectedNetworkConnectionId, selectedStationId);
+                    this.hideSpinner();
+
+                    if (response.error) {
+                        this.addError(response.error);
+                        return;
+                    }
+
+                    this.clearError()
+                    this.populateSelectInput(response);
+
+                    if (this.initialStationSensorType) {
+                        this.setSelectedOption(this.initialStationSensorType);
+
+                        // trigger change
+                        const event = new Event('change', {bubbles: true});
+                        this.selectInput.dispatchEvent(event);
+                    }
+                }
+            }
+
+            addError(message) {
+                this.errorMessageEl.textContent = message;
+                this.errorMessageEl.style.display = 'block';
+            }
+
+            clearError() {
+                this.errorMessageEl.textContent = '';
+                this.errorMessageEl.style.display = 'none';
+            }
+
+            async getStationSensorTypesForConnection(connectionId, stationId) {
+                try {
+                    const response = await fetch(`${this.stationSensorTypesUrl}?connection_id=${connectionId}&station_id=${stationId}`);
+                    if (!response.ok) {
+                        const res = await response.json();
+                        if (res.error) {
+                            throw new Error(res.error);
+                        } else {
+                            // get error message from server
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    return {error: error.message};
+                }
+            }
+
+            clearSelectInput() {
+                this.selectInput.innerHTML = '';
+            }
+
+            appendOptionToSelect(option) {
+                const optionElement = this.createOptionElement(option);
+                this.selectInput.appendChild(optionElement);
+            }
+
+            populateSelectInput(options) {
+                this.clearSelectInput();
+                this.appendOptionToSelect(this.#defaultOption);
+                options.forEach(option => this.appendOptionToSelect(option));
+            }
+
+            createOptionElement(option) {
+                const optionElement = document.createElement('option');
+                optionElement.value = option.value;
+                optionElement.textContent = option.label;
+                return optionElement;
+            }
+
+            debounce(func, wait) {
+                let timeout;
+                return function (...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+        }
+
+        // Initialize the widget
+        new StationSensorTypeSelectWidget({
+            widgetId: '{{ widget.attrs.id }}',
+            stationSensorTypesUrl: '{{ weatherlink_stations_sensor_type_url }}',
+            initialStationSensorType: '{{ widget.value|default_if_none:"" }}',
+            networkConnectionInputId: 'id_network_connection',
+            stationInputId: 'id_weatherlink_station_id',
+            errorMessageElId: 'error-message-sensor-type',
+            spinnerId: 'spinner-sensor-type',
+        });
+
+    </script>
+
+</div>
