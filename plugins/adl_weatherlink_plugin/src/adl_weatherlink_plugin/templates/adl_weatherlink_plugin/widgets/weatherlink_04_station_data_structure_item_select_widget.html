@@ -24,8 +24,8 @@
                                 initialParameter,
                                 networkConnectionInputId,
                                 stationInputId,
-                                sensorTypeInputId,
-                                dataStructureTypeInputId,
+                                sensorTypeFieldName,
+                                dataStructureTypeFieldName,
                                 errorMessageElId,
                                 spinnerId,
                                 defaultOption,
@@ -34,6 +34,11 @@
                     this.sensorTypeDataStructureItemUrl = sensorTypeDataStructureItemUrl;
                     this.initialParameter = initialParameter || "";
                     this.#defaultOption = defaultOption || this.#defaultOption;
+
+                    const [idPrefix, itemNumber, fieldName] = this.widgetId.split('-');
+
+                    const sensorTypeInputId = `${idPrefix}-${itemNumber}-${sensorTypeFieldName}`;
+                    const dataStructureTypeInputId = `${idPrefix}-${itemNumber}-${dataStructureTypeFieldName}`;
 
                     this.selectInput = document.getElementById(this.widgetId);
                     this.networkConnectionInput = document.getElementById(networkConnectionInputId);
@@ -78,6 +83,10 @@
 
                     this.dataStructureTypeInputId.addEventListener('change', (event) => {
                         this.reset()
+
+                        if (!event.detail) {
+                            this.clearInitial()
+                        }
 
                         const selectedDSType = this.dataStructureTypeInputId.value;
 
@@ -207,8 +216,8 @@
             initialParameter: '{{ widget.value|default_if_none:"" }}',
             networkConnectionInputId: "id_network_connection",
             stationInputId: 'id_weatherlink_station_id',
-            sensorTypeInputId: "id_sensor_type",
-            dataStructureTypeInputId: "id_data_structure_type",
+            sensorTypeFieldName: 'weatherlink_sensor_type',
+            dataStructureTypeFieldName: "weatherlink_data_structure_type",
             errorMessageElId: "error-message-" + "{{ widget.attrs.id }}",
             spinnerId: "spinner-" + "{{ widget.attrs.id }}",
         });

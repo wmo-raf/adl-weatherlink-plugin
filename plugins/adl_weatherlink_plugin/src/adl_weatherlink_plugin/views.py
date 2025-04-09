@@ -72,7 +72,7 @@ def get_weatherlink_station_sensor_types(request):
     
     station_sensor_types = [
         {
-            "label": sensor.get("product_name"),
+            "label": f"{sensor.get('product_name')} ({sensor.get('sensor_type')})",
             "value": sensor.get('sensor_type'),
         }
         for sensor in station_sensor_types
@@ -116,7 +116,7 @@ def get_weatherlink_sensor_type_data_structures(request):
     
     sensor_type_data_structures = [
         {
-            "label": ds.get("description"),
+            "label": f"{ds.get('description')} ({ds.get('data_structure_type')})",
             "value": ds.get('data_structure_type'),
         }
         for ds in sensor_type_data_structures

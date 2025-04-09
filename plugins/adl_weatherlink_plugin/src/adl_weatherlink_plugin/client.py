@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import requests
 from django.core.cache import cache
 
@@ -137,8 +139,23 @@ class WeatherLinkAPIClient:
         
         return None
     
-    def get_current_conditions(self, station_id):
+    def get_current_conditions(self, station_id, sensor_types_list):
+        sensor_types_list = [str(sensor_type) for sensor_type in sensor_types_list if sensor_type]
+        
         url = f'{self.base_url}current/{station_id}?api-key={self.api_key}'
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
-        return response.json()
+        
+        data_json = response.json()
+        sensors = data_json.get('sensors', [])
+        
+        data = []
+        
+        for sensor in sensors:
+            data_sensor_type = str(sensor['sensor_type'])
+            if data_sensor_type in sensor_types_list:
+                sensor_data = [{"datetime": datetime.fromtimestamp(item['ts']).replace(tzinfo=timezone.utc), **item} for
+                               item in sensor.get("data", [])]
+                data.extend(sensor_data)
+        
+        return data

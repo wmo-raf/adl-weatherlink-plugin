@@ -12,7 +12,7 @@ from .widgets import (
     WeatherLinkStationSelectWidget,
     WeatherLinkSensorTypeSelectWidget,
     WeatherLinkStationDataStructureSelectWidget,
-    WeatherLinkStationDataStructureItemSelectWidget
+    WeatherLinkStationDataStructureItemSelectWidget,
 )
 
 
@@ -61,13 +61,8 @@ class WeatherLinkStationLink(StationLink):
                                       help_text=_("Start date for data pulling. Select a past date to include the "
                                                   "historical data. Leave blank for collecting realtime data only"), )
     
-    sensor_type = models.CharField(max_length=255, verbose_name="WeatherLink Sensor Type")
-    data_structure_type = models.CharField(max_length=255, verbose_name="WeatherLink Data Structure Type")
-    
     panels = StationLink.panels + [
         FieldPanel("weatherlink_station_id", widget=WeatherLinkStationSelectWidget),
-        FieldPanel("sensor_type", widget=WeatherLinkSensorTypeSelectWidget),
-        FieldPanel("data_structure_type", widget=WeatherLinkStationDataStructureSelectWidget),
         FieldPanel("timezone"),
         FieldPanel("start_date"),
         InlinePanel("variable_mappings", label=_("Station Variable Mapping"), heading=_("Station Variable Mappings")),
@@ -84,12 +79,16 @@ class WeatherLinkStationLink(StationLink):
 class WeatherLinkStationLinkVariableMapping(Orderable):
     station_link = ParentalKey(WeatherLinkStationLink, on_delete=models.CASCADE, related_name="variable_mappings")
     adl_parameter = models.ForeignKey(DataParameter, on_delete=models.CASCADE, verbose_name=_("ADL Parameter"))
+    weatherlink_sensor_type = models.CharField(max_length=255, verbose_name="WeatherLink Sensor Type")
+    weatherlink_data_structure_type = models.CharField(max_length=255, verbose_name="WeatherLink Data Structure Type")
     weatherlink_parameter = models.CharField(max_length=255, verbose_name=_("WeatherLink Parameter"))
     weatherlink_parameter_unit = models.ForeignKey(Unit, on_delete=models.CASCADE,
                                                    verbose_name=_("WeatherLink Parameter Unit"))
     
     panels = [
         FieldPanel("adl_parameter"),
+        FieldPanel("weatherlink_sensor_type", widget=WeatherLinkSensorTypeSelectWidget),
+        FieldPanel("weatherlink_data_structure_type", widget=WeatherLinkStationDataStructureSelectWidget),
         FieldPanel("weatherlink_parameter", widget=WeatherLinkStationDataStructureItemSelectWidget),
         FieldPanel("weatherlink_parameter_unit"),
     ]

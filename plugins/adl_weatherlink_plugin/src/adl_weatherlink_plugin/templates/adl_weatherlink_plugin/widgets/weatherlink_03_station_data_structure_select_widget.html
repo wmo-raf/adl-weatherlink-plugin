@@ -14,186 +14,201 @@
     </div>
 
     <script>
-        class StationDataStructureSelectWidget {
-            #defaultOption = {label: "---------", value: ""};
+        if (!window.StationDataStructureSelectWidget) {
+            window.StationDataStructureSelectWidget = class {
+                #defaultOption = {label: "---------", value: ""};
 
-            constructor({
-                            widgetId,
-                            stationDSUrl,
-                            initialStationDS,
-                            networkConnectionInputId,
-                            stationInputId,
-                            sensorTypeInputId,
-                            errorMessageElId,
-                            spinnerId,
-                            defaultOption,
-                        }) {
+                constructor({
+                                widgetId,
+                                stationDSUrl,
+                                initialStationDS,
+                                networkConnectionInputId,
+                                stationInputId,
+                                sensorTypeFieldName,
+                                errorMessageElId,
+                                spinnerId,
+                                defaultOption,
+                            }) {
 
-                this.widgetId = widgetId;
-                this.stationDSUrl = stationDSUrl;
-                this.initialStationDS = initialStationDS;
-                this.#defaultOption = defaultOption || this.#defaultOption;
+                    this.widgetId = widgetId;
+                    this.stationDSUrl = stationDSUrl;
+                    this.initialStationDS = initialStationDS;
+                    this.#defaultOption = defaultOption || this.#defaultOption;
 
-                this.selectInput = document.getElementById(this.widgetId);
-                this.networkConnectionInput = document.getElementById(networkConnectionInputId);
-                this.stationInput = document.getElementById(stationInputId);
-                this.sensorTypeInput = document.getElementById(sensorTypeInputId);
-                this.errorMessageEl = document.getElementById(errorMessageElId);
-                this.spinner = document.getElementById(spinnerId);
+                    const [idPrefix, itemNumber, fieldName] = this.widgetId.split('-');
 
-                if (!this.selectInput || !this.networkConnectionInput || !this.stationInput || !this.sensorTypeInput || !this.errorMessageEl || !this.spinner) {
-                    throw new Error('One or more required DOM elements are missing.');
-                }
+                    const sensorTypeInputId = `${idPrefix}-${itemNumber}-${sensorTypeFieldName}`;
 
-                this.debouncedSetStationDSOptions = this.debounce(this.debouncedSetStationDSOptions.bind(this), 300);
-                this.init();
-            }
+                    this.selectInput = document.getElementById(this.widgetId);
+                    this.networkConnectionInput = document.getElementById(networkConnectionInputId);
+                    this.stationInput = document.getElementById(stationInputId);
+                    this.sensorTypeInput = document.getElementById(sensorTypeInputId);
+                    this.errorMessageEl = document.getElementById(errorMessageElId);
+                    this.spinner = document.getElementById(spinnerId);
 
-            async init() {
-                const selectedNetworkConnectionId = this.networkConnectionInput.value;
-                const selectedSensorType = this.sensorTypeInput.value;
-
-                if (selectedNetworkConnectionId && selectedSensorType) {
-                    await this.debouncedSetStationDSOptions(selectedNetworkConnectionId, selectedSensorType);
-                }
-
-                this.networkConnectionInput.addEventListener('change', (event) => {
-                    this.reset()
-                });
-
-                this.stationInput.addEventListener('change', (event) => {
-                    this.reset()
-
-                    if (!event.detail) {
-                        this.clearInitial()
-                    }
-                });
-
-                this.sensorTypeInput.addEventListener('change', (event) => {
-                    this.reset()
-
-                    if (!event.detail) {
-                        this.clearInitial()
+                    if (!this.selectInput || !this.networkConnectionInput || !this.stationInput || !this.sensorTypeInput || !this.errorMessageEl || !this.spinner) {
+                        throw new Error('One or more required DOM elements are missing.');
                     }
 
+                    this.debouncedSetStationDSOptions = this.debounce(this.debouncedSetStationDSOptions.bind(this), 300);
+                    this.init();
+                }
+
+                async init() {
                     const selectedNetworkConnectionId = this.networkConnectionInput.value;
-                    this.debouncedSetStationDSOptions(selectedNetworkConnectionId, event.target.value);
-                });
+                    const selectedSensorType = this.sensorTypeInput.value;
 
-            }
-
-            clearInitial() {
-                this.initialStationDS = '';
-            }
-
-            reset() {
-                this.clearSelectInput();
-                this.clearError();
-            }
-
-            showSpinner() {
-                this.spinner.style.display = 'block';
-            }
-
-            hideSpinner() {
-                this.spinner.style.display = 'none';
-            }
-
-            setSelectedOption(value) {
-                this.selectInput.value = value;
-            }
-
-            async debouncedSetStationDSOptions(selectedNetworkConnectionId, selectedSensorType) {
-                this.clearSelectInput();
-
-                if (selectedNetworkConnectionId && selectedSensorType) {
-                    this.showSpinner();
-
-                    const response = await this.getStationDSForConnection(selectedNetworkConnectionId, selectedSensorType);
-                    this.hideSpinner();
-
-                    if (response.error) {
-                        this.addError(response.error);
-                        return;
+                    if (selectedNetworkConnectionId && selectedSensorType) {
+                        await this.debouncedSetStationDSOptions(selectedNetworkConnectionId, selectedSensorType);
                     }
 
-                    this.clearError()
-                    this.populateSelectInput(response);
+                    this.networkConnectionInput.addEventListener('change', (event) => {
+                        this.reset()
+                    });
 
-                    if (this.initialStationDS) {
-                        this.setSelectedOption(this.initialStationDS);
-                    }
+                    this.stationInput.addEventListener('change', (event) => {
+                        this.reset()
+
+                        if (!event.detail) {
+                            this.clearInitial()
+                        }
+                    });
+
+                    this.sensorTypeInput.addEventListener('change', (event) => {
+                        this.reset()
+
+                        if (!event.detail) {
+                            this.clearInitial()
+                        }
+
+                        const selectedNetworkConnectionId = this.networkConnectionInput.value;
+                        this.debouncedSetStationDSOptions(selectedNetworkConnectionId, event.target.value);
+                    });
+
                 }
-            }
 
-            addError(message) {
-                this.errorMessageEl.textContent = message;
-                this.errorMessageEl.style.display = 'block';
-            }
+                clearInitial() {
+                    this.initialStationDS = '';
+                }
 
-            clearError() {
-                this.errorMessageEl.textContent = '';
-                this.errorMessageEl.style.display = 'none';
-            }
+                reset() {
+                    this.clearSelectInput();
+                    this.clearError();
+                }
 
-            async getStationDSForConnection(connectionId, sensorType) {
-                try {
-                    const response = await fetch(`${this.stationDSUrl}?connection_id=${connectionId}&sensor_type=${sensorType}`);
-                    if (!response.ok) {
-                        const res = await response.json();
-                        if (res.error) {
-                            throw new Error(res.error);
-                        } else {
-                            // get error message from server
-                            throw new Error(`HTTP error! Status: ${response.status}`);
+                showSpinner() {
+                    this.spinner.style.display = 'block';
+                }
+
+                hideSpinner() {
+                    this.spinner.style.display = 'none';
+                }
+
+                setSelectedOption(value) {
+                    this.selectInput.value = value;
+                }
+
+                async debouncedSetStationDSOptions(selectedNetworkConnectionId, selectedSensorType) {
+                    this.clearSelectInput();
+
+                    if (selectedNetworkConnectionId && selectedSensorType) {
+                        this.showSpinner();
+
+                        const response = await this.getStationDSForConnection(selectedNetworkConnectionId, selectedSensorType);
+                        this.hideSpinner();
+
+                        if (response.error) {
+                            this.addError(response.error);
+                            return;
+                        }
+
+                        this.clearError()
+                        this.populateSelectInput(response);
+
+                        if (this.initialStationDS) {
+                            this.setSelectedOption(this.initialStationDS);
+
+                            // trigger change
+                            const event = new CustomEvent('change', {
+                                bubbles: true, detail: {
+                                    custom: true
+                                }
+                            });
+
+                            this.selectInput.dispatchEvent(event);
                         }
                     }
-                    return await response.json();
-                } catch (error) {
-                    console.error('Fetch error:', error);
-                    return {error: error.message};
                 }
-            }
 
-            clearSelectInput() {
-                this.selectInput.innerHTML = '';
-            }
+                addError(message) {
+                    this.errorMessageEl.textContent = message;
+                    this.errorMessageEl.style.display = 'block';
+                }
 
-            appendOptionToSelect(option) {
-                const optionElement = this.createOptionElement(option);
-                this.selectInput.appendChild(optionElement);
-            }
+                clearError() {
+                    this.errorMessageEl.textContent = '';
+                    this.errorMessageEl.style.display = 'none';
+                }
 
-            populateSelectInput(options) {
-                this.clearSelectInput();
-                this.appendOptionToSelect(this.#defaultOption);
-                options.forEach(option => this.appendOptionToSelect(option));
-            }
+                async getStationDSForConnection(connectionId, sensorType) {
+                    try {
+                        const response = await fetch(`${this.stationDSUrl}?connection_id=${connectionId}&sensor_type=${sensorType}`);
+                        if (!response.ok) {
+                            const res = await response.json();
+                            if (res.error) {
+                                throw new Error(res.error);
+                            } else {
+                                // get error message from server
+                                throw new Error(`HTTP error! Status: ${response.status}`);
+                            }
+                        }
+                        return await response.json();
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        return {error: error.message};
+                    }
+                }
 
-            createOptionElement(option) {
-                const optionElement = document.createElement('option');
-                optionElement.value = option.value;
-                optionElement.textContent = option.label;
-                return optionElement;
-            }
+                clearSelectInput() {
+                    this.selectInput.innerHTML = '';
+                }
 
-            debounce(func, wait) {
-                let timeout;
-                return function (...args) {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => func.apply(this, args), wait);
-                };
+                appendOptionToSelect(option) {
+                    const optionElement = this.createOptionElement(option);
+                    this.selectInput.appendChild(optionElement);
+                }
+
+                populateSelectInput(options) {
+                    this.clearSelectInput();
+                    this.appendOptionToSelect(this.#defaultOption);
+                    options.forEach(option => this.appendOptionToSelect(option));
+                }
+
+                createOptionElement(option) {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.value;
+                    optionElement.textContent = option.label;
+                    return optionElement;
+                }
+
+                debounce(func, wait) {
+                    let timeout;
+                    return function (...args) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(this, args), wait);
+                    };
+                }
             }
         }
 
         // Initialize the widget
-        new StationDataStructureSelectWidget({
+        new window.StationDataStructureSelectWidget({
             widgetId: '{{ widget.attrs.id }}',
             stationDSUrl: '{{ weatherlink_stations_data_structure_url }}',
             initialStationDS: '{{ widget.value|default_if_none:"" }}',
             networkConnectionInputId: 'id_network_connection',
             stationInputId: 'id_weatherlink_station_id',
-            sensorTypeInputId: 'id_sensor_type',
+            sensorTypeFieldName: 'weatherlink_sensor_type',
             errorMessageElId: 'error-message-ds',
             spinnerId: 'spinner-ds',
         });
