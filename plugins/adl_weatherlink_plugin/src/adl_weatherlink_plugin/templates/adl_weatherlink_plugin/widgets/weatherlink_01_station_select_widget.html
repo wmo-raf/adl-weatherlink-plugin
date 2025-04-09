@@ -12,7 +12,6 @@
             </svg>
         </div>
     </div>
-
     <script>
         class RemoteStationSelectWidget {
             #defaultOption = {label: "---------", value: ""};
@@ -92,7 +91,13 @@
                     this.setSelectedOption(this.initialStationId);
 
                     // trigger change
-                    const event = new Event('change', {bubbles: true});
+                    const event = new CustomEvent('change', {
+                        bubbles: true, detail: {
+                            custom: true
+                        }
+                    });
+
+
                     this.selectInput.dispatchEvent(event);
                 }
             }

@@ -63,6 +63,10 @@
                 this.stationInput.addEventListener('change', (event) => {
                     this.reset()
 
+                    if (!event.detail) {
+                        this.clearInitial()
+                    }
+
                     const selectedNetworkConnectionId = this.networkConnectionInput.value;
                     this.debouncedSetStationSensorTypeOptions(selectedNetworkConnectionId, event.target.value);
                 });
@@ -110,7 +114,12 @@
                         this.setSelectedOption(this.initialStationSensorType);
 
                         // trigger change
-                        const event = new Event('change', {bubbles: true});
+                        const event = new CustomEvent('change', {
+                            bubbles: true, detail: {
+                                custom: true
+                            }
+                        });
+
                         this.selectInput.dispatchEvent(event);
                     }
                 }

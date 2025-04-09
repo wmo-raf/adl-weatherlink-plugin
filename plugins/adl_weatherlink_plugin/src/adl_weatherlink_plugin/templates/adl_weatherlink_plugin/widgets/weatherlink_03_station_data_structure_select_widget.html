@@ -59,16 +59,22 @@
 
                 this.networkConnectionInput.addEventListener('change', (event) => {
                     this.reset()
-                    this.clearInitial()
                 });
 
                 this.stationInput.addEventListener('change', (event) => {
                     this.reset()
-                    this.clearInitial()
+
+                    if (!event.detail) {
+                        this.clearInitial()
+                    }
                 });
 
                 this.sensorTypeInput.addEventListener('change', (event) => {
                     this.reset()
+
+                    if (!event.detail) {
+                        this.clearInitial()
+                    }
 
                     const selectedNetworkConnectionId = this.networkConnectionInput.value;
                     this.debouncedSetStationDSOptions(selectedNetworkConnectionId, event.target.value);
@@ -150,7 +156,6 @@
             }
 
             clearSelectInput() {
-                this.initialStationDS = '';
                 this.selectInput.innerHTML = '';
             }
 
