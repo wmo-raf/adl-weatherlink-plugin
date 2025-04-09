@@ -117,9 +117,6 @@ class WeatherLinkAPIClient:
         
         for sensor in sensors:
             sensor_catalog = self.get_sensor_catalog_for_sensor_type(sensor['sensor_type'])
-            # dont include health sensors
-            if sensor_catalog.get('category') == "Health":
-                continue
             catalog.append(sensor_catalog)
         
         return catalog
