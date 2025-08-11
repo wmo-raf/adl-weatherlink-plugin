@@ -71,6 +71,19 @@ class WeatherLinkStationLink(StationLink):
     
     def __str__(self):
         return f"{self.weatherlink_station_id} - {self.station} - {self.station.wigos_id}"
+    
+    def get_variable_mappings(self):
+        """
+        Returns the variable mappings for this station link.
+        """
+        return self.variable_mappings.all()
+    
+    def get_first_collection_date(self):
+        """
+        Returns the first collection date for this station link.
+        Returns None if no start date is set.
+        """
+        return self.start_date
 
 
 class WeatherLinkStationLinkVariableMapping(Orderable):
@@ -89,3 +102,17 @@ class WeatherLinkStationLinkVariableMapping(Orderable):
         FieldPanel("weatherlink_parameter", widget=WeatherLinkStationDataStructureItemSelectWidget),
         FieldPanel("weatherlink_parameter_unit"),
     ]
+    
+    @property
+    def source_parameter_name(self):
+        """
+        Returns the shortcode of the WeatherLink variable.
+        """
+        return self.weatherlink_parameter
+    
+    @property
+    def source_parameter_unit(self):
+        """
+        Returns the unit of the WeatherLink variable.
+        """
+        return self.weatherlink_parameter_unit
