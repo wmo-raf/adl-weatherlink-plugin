@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
     dependencies = [
         ('adl_weatherlink_plugin', '0002_remove_weatherlinkstationlink_data_structure_type_and_more'),
-        ('core', '0020_remove_station_timezone_stationlink_timezone'),
     ]
     
     operations = [
