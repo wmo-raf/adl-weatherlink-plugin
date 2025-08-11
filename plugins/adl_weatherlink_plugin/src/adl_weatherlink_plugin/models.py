@@ -2,7 +2,6 @@ from adl.core.models import NetworkConnection, StationLink, DataParameter, Unit
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
-from timezone_field import TimeZoneField
 from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel
 from wagtail.models import Orderable
 
