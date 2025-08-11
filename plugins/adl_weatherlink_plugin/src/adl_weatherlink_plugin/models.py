@@ -54,8 +54,6 @@ class WeatherLinkStationLink(StationLink):
     Model representing a link to a WeatherLink station.
     """
     weatherlink_station_id = models.CharField(max_length=255, verbose_name="WeatherLink Station ID")
-    timezone = TimeZoneField(default='UTC', verbose_name=_("Station Timezone"),
-                             help_text=_("Timezone used by the station for recording observations"))
     start_date = models.DateTimeField(blank=True, null=True, validators=[validate_start_date],
                                       verbose_name=_("Start Date"),
                                       help_text=_("Start date for data pulling. Select a past date to include the "
@@ -63,7 +61,6 @@ class WeatherLinkStationLink(StationLink):
     
     panels = StationLink.panels + [
         FieldPanel("weatherlink_station_id", widget=WeatherLinkStationSelectWidget),
-        FieldPanel("timezone"),
         FieldPanel("start_date"),
         InlinePanel("variable_mappings", label=_("Station Variable Mapping"), heading=_("Station Variable Mappings")),
     ]
