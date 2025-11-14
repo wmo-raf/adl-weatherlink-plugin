@@ -2,7 +2,6 @@ from adl.core.models import NetworkConnection, StationLink, DataParameter, Unit
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
-from timezone_field import TimeZoneField
 from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel
 from wagtail.models import Orderable
 
@@ -54,8 +53,6 @@ class WeatherLinkStationLink(StationLink):
     Model representing a link to a WeatherLink station.
     """
     weatherlink_station_id = models.CharField(max_length=255, verbose_name="WeatherLink Station ID")
-    timezone = TimeZoneField(default='UTC', verbose_name=_("Station Timezone"),
-                             help_text=_("Timezone used by the station for recording observations"))
     start_date = models.DateTimeField(blank=True, null=True, validators=[validate_start_date],
                                       verbose_name=_("Start Date"),
                                       help_text=_("Start date for data pulling. Select a past date to include the "
@@ -63,7 +60,6 @@ class WeatherLinkStationLink(StationLink):
     
     panels = StationLink.panels + [
         FieldPanel("weatherlink_station_id", widget=WeatherLinkStationSelectWidget),
-        FieldPanel("timezone"),
         FieldPanel("start_date"),
         InlinePanel("variable_mappings", label=_("Station Variable Mapping"), heading=_("Station Variable Mappings")),
     ]
@@ -74,6 +70,19 @@ class WeatherLinkStationLink(StationLink):
     
     def __str__(self):
         return f"{self.weatherlink_station_id} - {self.station} - {self.station.wigos_id}"
+    
+    def get_variable_mappings(self):
+        """
+        Returns the variable mappings for this station link.
+        """
+        return self.variable_mappings.all()
+    
+    def get_first_collection_date(self):
+        """
+        Returns the first collection date for this station link.
+        Returns None if no start date is set.
+        """
+        return self.start_date
 
 
 class WeatherLinkStationLinkVariableMapping(Orderable):
@@ -92,3 +101,17 @@ class WeatherLinkStationLinkVariableMapping(Orderable):
         FieldPanel("weatherlink_parameter", widget=WeatherLinkStationDataStructureItemSelectWidget),
         FieldPanel("weatherlink_parameter_unit"),
     ]
+    
+    @property
+    def source_parameter_name(self):
+        """
+        Returns the shortcode of the WeatherLink variable.
+        """
+        return self.weatherlink_parameter
+    
+    @property
+    def source_parameter_unit(self):
+        """
+        Returns the unit of the WeatherLink variable.
+        """
+        return self.weatherlink_parameter_unit

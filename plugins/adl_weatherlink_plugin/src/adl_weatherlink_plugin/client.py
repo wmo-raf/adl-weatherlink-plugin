@@ -151,8 +151,9 @@ class WeatherLinkAPIClient:
         for sensor in sensors:
             data_sensor_type = str(sensor['sensor_type'])
             if data_sensor_type in sensor_types_list:
-                sensor_data = [{"datetime": datetime.fromtimestamp(item['ts']).replace(tzinfo=timezone.utc), **item} for
-                               item in sensor.get("data", [])]
+                sensor_data = [
+                    {"observation_time": datetime.fromtimestamp(item['ts']).replace(tzinfo=timezone.utc), **item} for
+                    item in sensor.get("data", [])]
                 data.extend(sensor_data)
         
         return data
