@@ -36,12 +36,12 @@ class WeatherLinkConnection(NetworkConnection):
     Model representing a connection to a WeatherLink API.
     """
     station_link_model_string_label = "adl_weatherlink_plugin.WeatherLinkStationLink"
-    
+
     api_base_url = models.URLField(max_length=255, verbose_name="API Base URL",
                                    default="https://api.weatherlink.com/v2")
     api_key = models.CharField(max_length=255, verbose_name="API Key")
     api_secret = models.CharField(max_length=255, verbose_name="API Secret")
-    
+
     panels = NetworkConnection.panels + [
         MultiFieldPanel([
             FieldPanel("api_base_url"),
@@ -49,29 +49,29 @@ class WeatherLinkConnection(NetworkConnection):
             FieldPanel("api_secret"),
         ], heading=_("WeatherLink API Credentials")),
     ]
-    
+
     class Meta:
         verbose_name = "WeatherLink Connection"
         verbose_name_plural = "WeatherLink Connections"
-    
+
     def get_extra_model_admin_links(self):
         return []
-    
+
     @property
     def source_host(self):
         """The data host this connection dials, for operator-facing messages."""
         return urlparse(self.api_base_url).hostname
-    
+
     @property
     def source_stations_path(self):
         """The path of the station-list call, with no query string: the API key
         rides in one, and a message is the last place it should surface."""
         return f"{urlparse(self.api_base_url).path.rstrip('/')}/{STATIONS_PATH}"
-    
+
     def get_api_client(self, use_cache=True, timeout=DEFAULT_TIMEOUT, retries=None):
         """
         Returns the WeatherLink API client instance.
-        
+
         The defaults are the ingestion path's behaviour, unchanged. The
         diagnostic's on-demand checks pass a bounded, cache-bypassed client
         instead.
@@ -79,7 +79,7 @@ class WeatherLinkConnection(NetworkConnection):
         return WeatherLinkAPIClient(api_key=self.api_key, api_secret=self.api_secret,
                                     base_url=self.api_base_url, timeout=timeout,
                                     retries=retries, use_cache=use_cache)
-    
+
     def get_source_endpoint(self):
         """
         The (host, port) core's generic DNS -> TCP probe dials (layer 4 of the
@@ -88,12 +88,12 @@ class WeatherLinkConnection(NetworkConnection):
         """
         parsed = urlparse(self.api_base_url)
         return parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
-    
+
     def check_source(self):
         """
         Ask whether the source accepts our credentials and offers data
         (layer 5 of the ingestion diagnostic). Read-only, on demand only.
-        
+
         The station list is the cheapest read that proves both halves at once,
         and it is asked for with the cache bypassed: it is otherwise held for
         24 hours, and a cached copy would report OK while the source is down —
@@ -103,9 +103,9 @@ class WeatherLinkConnection(NetworkConnection):
         # predating the source-check contracts, where this method is never
         # called and a module-level import would kill the whole plugin.
         from adl.core.source_checks import SourceCheckResult, SourceCheckStatus
-        
+
         host = self.source_host
-        
+
         try:
             # Client construction belongs inside the guarded region, so a
             # credential fault reads as a check failure rather than an
@@ -140,7 +140,7 @@ class WeatherLinkConnection(NetworkConnection):
                     "error": e,
                 },
             )
-        
+
         return SourceCheckResult(
             status=SourceCheckStatus.OK,
             message=gettext("%(host)s accepted our credentials and returned %(count)s station(s).") % {
@@ -159,38 +159,38 @@ class WeatherLinkStationLink(StationLink):
                                       verbose_name=_("Start Date"),
                                       help_text=_("Start date for data pulling. Select a past date to include the "
                                                   "historical data. Leave blank for collecting realtime data only"), )
-    
+
     panels = StationLink.panels + [
         FieldPanel("weatherlink_station_id", widget=WeatherLinkStationSelectWidget),
         FieldPanel("start_date"),
         InlinePanel("variable_mappings", label=_("Station Variable Mapping"), heading=_("Station Variable Mappings")),
     ]
-    
+
     class Meta:
         verbose_name = "WeatherLink Station Link"
         verbose_name_plural = "WeatherLink Stations Link"
-    
+
     def __str__(self):
         return f"{self.weatherlink_station_id} - {self.station} - {self.station.wigos_id}"
-    
+
     def get_variable_mappings(self):
         """
         Returns the variable mappings for this station link.
         """
         return self.variable_mappings.all()
-    
+
     def get_first_collection_date(self):
         """
         Returns the first collection date for this station link.
         Returns None if no start date is set.
         """
         return self.start_date
-    
+
     def check_station_source(self):
         """
         Ask whether this station's WeatherLink id resolves at the source
         (layer 5 of the ingestion diagnostic, station-scoped).
-        
+
         Built from the client's existing ``get_station()``, which reads the
         station list and returns None for an id that is not in it. The cache
         is bypassed over the whole check rather than only its failure branch:
@@ -198,10 +198,10 @@ class WeatherLinkStationLink(StationLink):
         missing, causing the very misconfiguration the check exists to detect.
         """
         from adl.core.source_checks import SourceCheckResult, SourceCheckStatus
-        
+
         connection = self.network_connection
         host = connection.source_host
-        
+
         try:
             client = connection.get_api_client(use_cache=False, timeout=SOURCE_CHECK_TIMEOUT_SECONDS, retries=0)
             station = client.get_station(self.weatherlink_station_id)
@@ -220,7 +220,7 @@ class WeatherLinkStationLink(StationLink):
                     "error": e,
                 },
             )
-        
+
         if station is None:
             # Absent from a list the source really returned is proof, not
             # suspicion: this station link can never ingest anything.
@@ -231,7 +231,7 @@ class WeatherLinkStationLink(StationLink):
                     "id": self.weatherlink_station_id,
                 },
             )
-        
+
         # The upstream's own label is what catches a valid-but-wrong id — a
         # real station belonging to a different site — which is the failure
         # that yields plausible wrong data rather than an outage.
@@ -240,10 +240,10 @@ class WeatherLinkStationLink(StationLink):
         # one. Zero sensors is still OK, stated plainly for the operator to
         # judge; no second call is ever made to obtain a number.
         sensors = station.get("sensors")
-        
+
         context = {"id": self.weatherlink_station_id, "label": label,
                    "count": len(sensors) if isinstance(sensors, list) else 0}
-        
+
         if label and isinstance(sensors, list):
             message = gettext('Station %(id)s found upstream as "%(label)s", '
                               'with %(count)s sensor(s).') % context
@@ -254,7 +254,7 @@ class WeatherLinkStationLink(StationLink):
                               "with %(count)s sensor(s).") % context
         else:
             message = gettext("Station %(id)s was found in the source's station list.") % context
-        
+
         return SourceCheckResult(status=SourceCheckStatus.OK, message=message)
 
 
@@ -266,7 +266,7 @@ class WeatherLinkStationLinkVariableMapping(Orderable):
     weatherlink_parameter = models.CharField(max_length=255, verbose_name=_("WeatherLink Parameter"))
     weatherlink_parameter_unit = models.ForeignKey(Unit, on_delete=models.CASCADE,
                                                    verbose_name=_("WeatherLink Parameter Unit"))
-    
+
     panels = [
         FieldPanel("adl_parameter"),
         FieldPanel("weatherlink_sensor_type", widget=WeatherLinkSensorTypeSelectWidget),
@@ -274,14 +274,14 @@ class WeatherLinkStationLinkVariableMapping(Orderable):
         FieldPanel("weatherlink_parameter", widget=WeatherLinkStationDataStructureItemSelectWidget),
         FieldPanel("weatherlink_parameter_unit"),
     ]
-    
+
     @property
     def source_parameter_name(self):
         """
         Returns the shortcode of the WeatherLink variable.
         """
         return self.weatherlink_parameter
-    
+
     @property
     def source_parameter_unit(self):
         """
