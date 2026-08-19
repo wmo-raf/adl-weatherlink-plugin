@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime, timezone
 
 import requests
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = 'https://api.weatherlink.com/v2/'
 DEFAULT_TIMEOUT = 30
@@ -272,9 +275,21 @@ class WeatherLinkAPIClient:
             sources_count += sum(1 for item in entries if _within_window(item, start_date, end_date))
 
             if data_sensor_type in sensor_types_list:
-                sensor_data = [
-                    {"observation_time": datetime.fromtimestamp(item['ts']).replace(tzinfo=timezone.utc), **item} for
-                    item in entries]
-                data.extend(sensor_data)
+                for item in entries:
+                    # Through the same helper the window check uses, so the
+                    # two conversions in this module cannot drift apart again.
+                    observation_time = _entry_time(item)
+
+                    # An entry the source sent without a usable timestamp
+                    # cannot be stored as an observation. Skip it rather than
+                    # failing the whole station's run over one bad entry.
+                    if observation_time is None:
+                        logger.warning(
+                            f"[WEATHERLINK] Skipping a sensor type {data_sensor_type} entry for station "
+                            f"{station_id} that carries no usable timestamp."
+                        )
+                        continue
+
+                    data.append({"observation_time": observation_time, **item})
 
         return data, sources_count
