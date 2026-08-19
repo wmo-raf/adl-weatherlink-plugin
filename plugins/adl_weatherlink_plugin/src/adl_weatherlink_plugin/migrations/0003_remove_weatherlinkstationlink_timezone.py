@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('adl_weatherlink_plugin', '0002_remove_weatherlinkstationlink_data_structure_type_and_more'),
     ]
-    
+
     operations = [
         migrations.RemoveField(
             model_name='weatherlinkstationlink',
