@@ -13,6 +13,7 @@ this plugin's own compose stack with ``make test`` from the repo root.
 
 import ast
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
@@ -372,7 +373,7 @@ class CurrentConditionsWindowTests(SimpleTestCase):
 
     def test_an_entry_without_a_timestamp_is_not_counted(self):
         # On an unmapped sensor, so this exercises the counter rather than the
-        # record builder, which has always required a `ts`.
+        # record builder.
         payload = snapshot(sensor(sensor_type="99", entries=[{"temp": 21.5}]))
         _records, count = self.conditions(payload, sensor_types=("45",),
                                           start_date=self.START, end_date=self.END)
@@ -382,6 +383,68 @@ class CurrentConditionsWindowTests(SimpleTestCase):
         payload = snapshot(sensor(entries=[entry(NOW - timedelta(weeks=4), temp=21.5)]))
         _records, count = self.conditions(payload)
         self.assertEqual(count, 1)
+
+
+class ObservationTimeTests(SimpleTestCase):
+    """`ts` is epoch seconds — an instant, carrying no zone of its own. The
+    record's `observation_time` must be that instant in UTC, whatever zone the
+    container happens to run in."""
+
+    def conditions(self, payload, sensor_types=("45",)):
+        client = WeatherLinkAPIClient(api_key="key", api_secret="secret")
+        with mock.patch.object(client.session, "get", return_value=FakeResponse(200, payload)):
+            return client.get_current_conditions("12345", sensor_types)
+
+    def run_in_zone(self, zone):
+        """Runs the rest of the test with the process in `zone`, restoring the
+        container's own zone afterwards."""
+        previous = os.environ.get("TZ")
+
+        def restore():
+            if previous is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = previous
+            time.tzset()
+
+        self.addCleanup(restore)
+        os.environ["TZ"] = zone
+        time.tzset()
+
+    def test_the_stored_time_is_the_instant_the_source_sent(self):
+        # Reading the epoch in the container's local zone and relabelling the
+        # result UTC shifts every observation by the local offset. Nairobi is
+        # +3 with no DST, so the bug is a clean three hours.
+        observed_at = datetime(2026, 8, 19, 10, 40, tzinfo=timezone.utc)
+
+        for zone in ("UTC", "Africa/Nairobi", "America/New_York"):
+            with self.subTest(zone=zone):
+                self.run_in_zone(zone)
+                payload = snapshot(sensor(entries=[entry(observed_at, temp=21.5)]))
+
+                records, _count = self.conditions(payload)
+
+                self.assertEqual(records[0]["observation_time"], observed_at)
+
+    def test_an_entry_without_a_usable_timestamp_is_skipped(self):
+        # A record with no observation time cannot be stored, but one bad
+        # entry must not fail the whole station's run.
+        payload = snapshot(sensor(entries=[
+            {"temp": 21.5},
+            entry(datetime(2026, 8, 19, 10, 40, tzinfo=timezone.utc), temp=22.0),
+        ]))
+
+        records, _count = self.conditions(payload)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["temp"], 22.0)
+
+    def test_an_unusable_timestamp_is_skipped_too(self):
+        payload = snapshot(sensor(entries=[{"ts": "not-a-timestamp", "temp": 21.5}]))
+
+        records, _count = self.conditions(payload)
+
+        self.assertEqual(records, [])
 
 
 class ExceptionStampingTests(SimpleTestCase):
