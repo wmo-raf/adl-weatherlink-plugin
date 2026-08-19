@@ -6,13 +6,14 @@ from django.core.cache import cache
 
 # API Reference: https://weatherlink.github.io/v2-api/api-reference
 class WeatherLinkAPIClient:
-    def __init__(self, api_key, api_secret, base_url='https://api.weatherlink.com/v2/', use_cache=True):
+    def __init__(self, api_key, api_secret, base_url='https://api.weatherlink.com/v2/', timeout=30, use_cache=True):
         self.api_key = api_key
         
         if not base_url.endswith('/'):
             base_url += '/'
         
         self.base_url = base_url
+        self.timeout = timeout
         self.use_cache = use_cache
         
         self.headers = {
@@ -25,7 +26,7 @@ class WeatherLinkAPIClient:
             return cache.get(cache_key)
         else:
             url = f'{self.base_url}stations?api-key={self.api_key}'
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, timeout=self.timeout)
             
             response.raise_for_status()
             
@@ -57,7 +58,7 @@ class WeatherLinkAPIClient:
             return cache.get(cache_key)
         
         url = f'{self.base_url}sensors?api-key={self.api_key}'
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, timeout=self.timeout)
         response.raise_for_status()
         
         sensors = response.json().get('sensors', [])
@@ -88,7 +89,7 @@ class WeatherLinkAPIClient:
             return cache.get(cache_key)
         
         url = f'{self.base_url}sensor-catalog?api-key={self.api_key}'
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, timeout=self.timeout)
         response.raise_for_status()
         
         sensor_types_data = response.json().get('sensor_types', [])
@@ -140,7 +141,7 @@ class WeatherLinkAPIClient:
         sensor_types_list = [str(sensor_type) for sensor_type in sensor_types_list if sensor_type]
         
         url = f'{self.base_url}current/{station_id}?api-key={self.api_key}'
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, timeout=self.timeout)
         response.raise_for_status()
         
         data_json = response.json()
