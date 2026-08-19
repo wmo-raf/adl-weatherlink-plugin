@@ -1,11 +1,19 @@
+from urllib.parse import urlparse
+
+import requests
 from adl.core.models import NetworkConnection, StationLink, DataParameter, Unit
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel
 from wagtail.models import Orderable
 
-from .client import WeatherLinkAPIClient
+from .client import (
+    DEFAULT_TIMEOUT,
+    STATIONS_PATH,
+    WeatherLinkAPIClient,
+    category_for_status,
+)
 from .validators import validate_start_date
 from .widgets import (
     WeatherLinkStationSelectWidget,
@@ -13,6 +21,14 @@ from .widgets import (
     WeatherLinkStationDataStructureSelectWidget,
     WeatherLinkStationDataStructureItemSelectWidget,
 )
+
+# What the diagnostic's on-demand checks pass instead of the ingestion
+# defaults. Core bounds its whole probe — DNS, TCP and the source check
+# together — by a 15-second wall clock and abandons rather than kills a
+# worker that overruns it, so the check has to come back first with a real
+# verdict. Deliberately not a model field: an operator who raised it to 300
+# for a slow partner would silently re-break the probe.
+SOURCE_CHECK_TIMEOUT_SECONDS = 5
 
 
 class WeatherLinkConnection(NetworkConnection):
@@ -41,11 +57,97 @@ class WeatherLinkConnection(NetworkConnection):
     def get_extra_model_admin_links(self):
         return []
     
-    def get_api_client(self):
+    @property
+    def source_host(self):
+        """The data host this connection dials, for operator-facing messages."""
+        return urlparse(self.api_base_url).hostname
+    
+    @property
+    def source_stations_path(self):
+        """The path of the station-list call, with no query string: the API key
+        rides in one, and a message is the last place it should surface."""
+        return f"{urlparse(self.api_base_url).path.rstrip('/')}/{STATIONS_PATH}"
+    
+    def get_api_client(self, use_cache=True, timeout=DEFAULT_TIMEOUT, retries=None):
         """
         Returns the WeatherLink API client instance.
+        
+        The defaults are the ingestion path's behaviour, unchanged. The
+        diagnostic's on-demand checks pass a bounded, cache-bypassed client
+        instead.
         """
-        return WeatherLinkAPIClient(api_key=self.api_key, api_secret=self.api_secret, base_url=self.api_base_url)
+        return WeatherLinkAPIClient(api_key=self.api_key, api_secret=self.api_secret,
+                                    base_url=self.api_base_url, timeout=timeout,
+                                    retries=retries, use_cache=use_cache)
+    
+    def get_source_endpoint(self):
+        """
+        The (host, port) core's generic DNS -> TCP probe dials (layer 4 of the
+        ingestion diagnostic), taken from the configured base URL — the
+        explicit port when it carries one, otherwise the scheme's default.
+        """
+        parsed = urlparse(self.api_base_url)
+        return parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
+    
+    def check_source(self):
+        """
+        Ask whether the source accepts our credentials and offers data
+        (layer 5 of the ingestion diagnostic). Read-only, on demand only.
+        
+        The station list is the cheapest read that proves both halves at once,
+        and it is asked for with the cache bypassed: it is otherwise held for
+        24 hours, and a cached copy would report OK while the source is down —
+        the precise failure this check exists to catch.
+        """
+        # Imported lazily: this module does not exist on a core release
+        # predating the source-check contracts, where this method is never
+        # called and a module-level import would kill the whole plugin.
+        from adl.core.source_checks import SourceCheckResult, SourceCheckStatus
+        
+        host = self.source_host
+        
+        try:
+            # Client construction belongs inside the guarded region, so a
+            # credential fault reads as a check failure rather than an
+            # unhandled error.
+            client = self.get_api_client(use_cache=False, timeout=SOURCE_CHECK_TIMEOUT_SECONDS, retries=0)
+            stations = client.get_stations()
+        except requests.HTTPError as e:
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                category=category_for_status(e.response.status_code),
+                message=gettext("%(host)s returned HTTP %(code)s for %(path)s.") % {
+                    "host": host,
+                    "code": e.response.status_code,
+                    "path": self.source_stations_path,
+                },
+            )
+        except ValueError:
+            # Ordered ahead of RequestException on purpose: requests' own
+            # JSONDecodeError is both, and it belongs here. The source sent no
+            # code to classify from, so the category is declined.
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                message=gettext("%(host)s answered, but the response was not a station list.") % {
+                    "host": host,
+                },
+            )
+        except requests.RequestException as e:
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                message=gettext("%(host)s could not be reached: %(error)s") % {
+                    "host": host,
+                    "error": e,
+                },
+            )
+        
+        return SourceCheckResult(
+            status=SourceCheckStatus.OK,
+            message=gettext("%(host)s accepted our credentials and returned %(count)s station(s).") % {
+                "host": host,
+                "count": len(stations),
+            },
+        )
 
 
 class WeatherLinkStationLink(StationLink):
@@ -83,6 +185,77 @@ class WeatherLinkStationLink(StationLink):
         Returns None if no start date is set.
         """
         return self.start_date
+    
+    def check_station_source(self):
+        """
+        Ask whether this station's WeatherLink id resolves at the source
+        (layer 5 of the ingestion diagnostic, station-scoped).
+        
+        Built from the client's existing ``get_station()``, which reads the
+        station list and returns None for an id that is not in it. The cache
+        is bypassed over the whole check rather than only its failure branch:
+        a day-old list would report a station added upstream yesterday as
+        missing, causing the very misconfiguration the check exists to detect.
+        """
+        from adl.core.source_checks import SourceCheckResult, SourceCheckStatus
+        
+        connection = self.network_connection
+        host = connection.source_host
+        
+        try:
+            client = connection.get_api_client(use_cache=False, timeout=SOURCE_CHECK_TIMEOUT_SECONDS, retries=0)
+            station = client.get_station(self.weatherlink_station_id)
+        except ValueError:
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                message=gettext("%(host)s answered, but the response was not a station list.") % {
+                    "host": host,
+                },
+            )
+        except requests.RequestException as e:
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                message=gettext("Could not read the station list from %(host)s: %(error)s") % {
+                    "host": host,
+                    "error": e,
+                },
+            )
+        
+        if station is None:
+            # Absent from a list the source really returned is proof, not
+            # suspicion: this station link can never ingest anything.
+            return SourceCheckResult(
+                status=SourceCheckStatus.FAILED,
+                category="PATH_NOT_FOUND",
+                message=gettext("Station %(id)s was not found in the source's station list.") % {
+                    "id": self.weatherlink_station_id,
+                },
+            )
+        
+        # The upstream's own label is what catches a valid-but-wrong id — a
+        # real station belonging to a different site — which is the failure
+        # that yields plausible wrong data rather than an outage.
+        label = station.get("station_name") or ""
+        # A byproduct only, reported when the station record already carries
+        # one. Zero sensors is still OK, stated plainly for the operator to
+        # judge; no second call is ever made to obtain a number.
+        sensors = station.get("sensors")
+        
+        context = {"id": self.weatherlink_station_id, "label": label,
+                   "count": len(sensors) if isinstance(sensors, list) else 0}
+        
+        if label and isinstance(sensors, list):
+            message = gettext('Station %(id)s found upstream as "%(label)s", '
+                              'with %(count)s sensor(s).') % context
+        elif label:
+            message = gettext('Station %(id)s found upstream as "%(label)s".') % context
+        elif isinstance(sensors, list):
+            message = gettext("Station %(id)s was found in the source's station list, "
+                              "with %(count)s sensor(s).") % context
+        else:
+            message = gettext("Station %(id)s was found in the source's station list.") % context
+        
+        return SourceCheckResult(status=SourceCheckStatus.OK, message=message)
 
 
 class WeatherLinkStationLinkVariableMapping(Orderable):
