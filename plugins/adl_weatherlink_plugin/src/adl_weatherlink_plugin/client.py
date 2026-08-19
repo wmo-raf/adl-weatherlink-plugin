@@ -74,7 +74,7 @@ def _entry_time(item):
     if ts is None:
         return None
     try:
-        return datetime.fromtimestamp(ts).replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(ts, tz=timezone.utc)
     except (TypeError, ValueError, OSError):
         return None
 
