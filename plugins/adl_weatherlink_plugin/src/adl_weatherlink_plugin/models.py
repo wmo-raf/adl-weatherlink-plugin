@@ -155,10 +155,18 @@ class WeatherLinkStationLink(StationLink):
     Model representing a link to a WeatherLink station.
     """
     weatherlink_station_id = models.CharField(max_length=255, verbose_name="WeatherLink Station ID")
-    start_date = models.DateTimeField(blank=True, null=True, validators=[validate_start_date],
-                                      verbose_name=_("Start Date"),
-                                      help_text=_("Start date for data pulling. Select a past date to include the "
-                                                  "historical data. Leave blank for collecting realtime data only"), )
+    start_date = models.DateTimeField(
+        blank=True,
+        null=True,
+        validators=[validate_start_date],
+        verbose_name=_("Collection Start Date"),
+        help_text=_(
+            "Collection never starts before this date. On the first run it is "
+            "the start of the backfill; afterwards, moving it forward past the "
+            "latest saved record skips the gap. Leave empty to start from the "
+            "last hour."
+        ),
+    )
 
     panels = StationLink.panels + [
         FieldPanel("weatherlink_station_id", widget=WeatherLinkStationSelectWidget),
