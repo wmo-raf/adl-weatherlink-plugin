@@ -1,0 +1,133 @@
+{
+  "capture": {
+    "connection": "WeatherLink (demo)",
+    "ingest": true,
+    "probe": true,
+    "station_checks": [
+      "DEMO001"
+    ],
+    "wait": 300
+  },
+  "connection": {
+    "model": "adl_weatherlink_plugin.WeatherLinkConnection",
+    "fields": {
+      "name": "WeatherLink (demo)",
+      "plugin": "adl_weatherlink_plugin",
+      "stations_timezone": "Africa/Nairobi",
+      "plugin_processing_interval": 1,
+      "api_base_url": "$ENV:WEATHERLINK_API_BASE_URL|http://api.weatherlink.test:8000/v2",
+      "api_key": "$ENV:WEATHERLINK_API_KEY|demo-key",
+      "api_secret": "$ENV:WEATHERLINK_API_SECRET|demo-secret"
+    }
+  },
+  "station_links": [
+    {
+      "model": "adl_weatherlink_plugin.WeatherLinkStationLink",
+      "station": "DEMO001",
+      "fields": {
+        "weatherlink_station_id": "$ENV:WEATHERLINK_STATION_ID_1|1001",
+        "start_date": "$NOW-1d"
+      },
+      "children": {
+        "variable_mappings": [
+          {
+            "adl_parameter": "Air Temperature",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_1|37",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "temp",
+            "weatherlink_parameter_unit": "degF"
+          },
+          {
+            "adl_parameter": "Relative Humidity",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_1|37",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "hum",
+            "weatherlink_parameter_unit": "percent"
+          },
+          {
+            "adl_parameter": "Wind Speed",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_1|37",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "wind_speed_last",
+            "weatherlink_parameter_unit": "mph"
+          },
+          {
+            "adl_parameter": "Wind Direction",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_1|37",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "wind_dir_last",
+            "weatherlink_parameter_unit": "degree"
+          },
+          {
+            "adl_parameter": "Precipitation",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_1|37",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "rainfall_last_15_min_mm",
+            "weatherlink_parameter_unit": "mm"
+          },
+          {
+            "adl_parameter": "Atmospheric Pressure",
+            "weatherlink_sensor_type": "242",
+            "weatherlink_data_structure_type": "12",
+            "weatherlink_parameter": "bar_sea_level",
+            "weatherlink_parameter_unit": "inHg"
+          }
+        ]
+      }
+    },
+    {
+      "model": "adl_weatherlink_plugin.WeatherLinkStationLink",
+      "station": "DEMO002",
+      "fields": {
+        "weatherlink_station_id": "$ENV:WEATHERLINK_STATION_ID_2|1002",
+        "start_date": "$NOW-1d"
+      },
+      "children": {
+        "variable_mappings": [
+          {
+            "adl_parameter": "Air Temperature",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_2|43",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "temp",
+            "weatherlink_parameter_unit": "degF"
+          },
+          {
+            "adl_parameter": "Relative Humidity",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_2|43",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "hum",
+            "weatherlink_parameter_unit": "percent"
+          },
+          {
+            "adl_parameter": "Wind Speed",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_2|43",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "wind_speed_last",
+            "weatherlink_parameter_unit": "mph"
+          },
+          {
+            "adl_parameter": "Wind Direction",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_2|43",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "wind_dir_last",
+            "weatherlink_parameter_unit": "degree"
+          },
+          {
+            "adl_parameter": "Precipitation",
+            "weatherlink_sensor_type": "$ENV:WEATHERLINK_SENSOR_TYPE_2|43",
+            "weatherlink_data_structure_type": "10",
+            "weatherlink_parameter": "rainfall_last_15_min_mm",
+            "weatherlink_parameter_unit": "mm"
+          },
+          {
+            "adl_parameter": "Atmospheric Pressure",
+            "weatherlink_sensor_type": "242",
+            "weatherlink_data_structure_type": "12",
+            "weatherlink_parameter": "bar_sea_level",
+            "weatherlink_parameter_unit": "inHg"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+# Screenshot manifest for the ADL WeatherLink Plugin guide (docs/guide.md).
+# Regenerate from the adl repo:  scripts/capture-plugin-docs.sh ../adl-plugins/adl-weatherlink-plugin
+# Fixture: docs/screenshots/fixture.json (connection 1 = "WeatherLink (demo)", station link 1 = DEMO001).
+# No credentials needed: the stack includes a stub WeatherLink v2 API
+# (docs/screenshots/compose.mock.yml + docs/screenshots/mock-api/), so the station, sensor-type,
+# data-structure and parameter selects fill from a real HTTP round trip against a recorded
+# catalogue. Export WEATHERLINK_API_BASE_URL / WEATHERLINK_API_KEY / WEATHERLINK_API_SECRET /
+# WEATHERLINK_STATION_ID_* in docs/screenshots/credentials.env to run against a live account.
+# Format: defaults + screenshots (name/url/setup/callouts/capture), run by adl's
+# docs/screenshots/capture/capture.py; output derives from name: docs/images/<name>.png.
+# Callouts are numbered badges/outlines only — never text in images.
+
+defaults:
+  viewport:
+  - 1440
+  - 900
+  padding: 12
+screenshots:
+- name: weatherlink_connection_form
+  url: /weatherlinkconnection/edit/1/
+  setup:
+  - fill: { selector: '#id_api_key', value: '••••••••••••' }
+  - fill: { selector: '#id_api_secret', value: '••••••••••••' }
+  callouts:
+  - badge:
+      target: '#id_api_base_url'
+      n: 1
+  - badge:
+      target: '#id_api_key'
+      n: 2
+  - badge:
+      target: '#id_api_secret'
+      n: 3
+  capture:
+    selector: "#w-editor-form"
+- name: weatherlink_station_link_form
+  url: /weatherlinkstationlink/edit/1/
+  setup:
+  - wait_until: "document.querySelector('#id_weatherlink_station_id').options.length > 1"
+  callouts:
+  - badge:
+      target: '#id_weatherlink_station_id'
+      n: 1
+  - badge:
+      target: '#id_start_date'
+      n: 2
+  - badge:
+      target: '#id_variable_mappings-FORMS'
+      n: 3
+  capture:
+    selector: "#w-editor-form"
+- name: weatherlink_station_select
+  url: /weatherlinkstationlink/edit/1/
+  setup:
+  - wait_until: "document.querySelector('#id_weatherlink_station_id').options.length > 1"
+  callouts:
+  - highlight: '#id_weatherlink_station_id'
+  capture:
+    # the whole field, so the shot carries its label and not just a bare select
+    selector: '#panel-weatherlink_station_id-section'
+- name: weatherlink_sensor_type_select
+  url: /weatherlinkstationlink/edit/1/
+  setup:
+  - wait_until: "document.querySelector('#id_variable_mappings-0-weatherlink_sensor_type').options.length > 1"
+  callouts:
+  - highlight: '#id_variable_mappings-0-weatherlink_sensor_type'
+  capture:
+    selector: '#inline_child_variable_mappings-0'
+- name: weatherlink_parameter_select
+  url: /weatherlinkstationlink/edit/1/
+  setup:
+  - wait_until: "document.querySelector('#id_variable_mappings-0-weatherlink_parameter').options.length > 1"
+  callouts:
+  - badge:
+      target: '#id_variable_mappings-0-weatherlink_data_structure_type'
+      n: 1
+  - badge:
+      target: '#id_variable_mappings-0-weatherlink_parameter'
+      n: 2
+  - badge:
+      target: '#id_variable_mappings-0-weatherlink_parameter_unit-chooser'
+      n: 3
+  capture:
+    selector: '#inline_child_variable_mappings-0'
+- name: weatherlink_ingestion_diagnostic
+  url: /monitoring/connection/1/health/
+  callouts:
+  - highlight: .health-probe-form button
+  capture:
+    selector: .health-diagnostic
+- name: weatherlink_station_source_check
+  url: /weatherlinkstationlink/inspect/1/
+  capture:
+    selector: ":nth-match(.collection-status, 2)"

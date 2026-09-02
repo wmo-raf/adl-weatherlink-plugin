@@ -1,0 +1,23 @@
+# Stub WeatherLink v2 API for the documentation screenshot harness
+# (merged into the capture stack by adl/scripts/capture-plugin-docs.sh).
+#
+# The network alias is a dotted name under .test (the TLD RFC 6761 reserves for
+# exactly this) because api_base_url is a URLField and Django's URL validator
+# rejects both an underscore and a dotless host — a bare service name would fail
+# the connection's own validation. It also keeps the hostname in the captured
+# diagnostics readable without impersonating the real service.
+services:
+  mock-weatherlink:
+    build: ./docs/screenshots/mock-api
+    image: adl-docs-mock-weatherlink
+    container_name: adl-weatherlink-plugin-docs-mock-api
+    environment:
+      MOCK_API_KEY: demo-key
+      MOCK_API_SECRET: demo-secret
+    networks:
+      default:
+        aliases:
+          - api.weatherlink.test
+  adl:
+    depends_on:
+      - mock-weatherlink
