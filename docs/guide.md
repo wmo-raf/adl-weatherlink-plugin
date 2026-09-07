@@ -1,3 +1,10 @@
+---
+adl_plugin:
+  name: ADL WeatherLink Plugin
+  connects_to: Davis Instruments WeatherLink API
+  category: general
+  choose_when: Your stations use Davis Instruments WeatherLink.
+---
 # ADL WeatherLink Plugin
 
 Collects observation data from **Davis Instruments** weather stations through the
@@ -41,7 +48,7 @@ minutes for most Davis stations) so no reading is skipped.
 
 ## Prerequisites
 
-- A running ADL instance (see the ADL installation guide).
+- A running ADL instance (see [Installation](https://adl-tool.readthedocs.io/en/latest/installation.html)).
 - A **WeatherLink account** that owns (or has been shared) the stations to
   collect, on a plan that includes API access.
 - A **WeatherLink v2 API Key and API Secret**, generated in your WeatherLink
@@ -53,8 +60,8 @@ minutes for most Davis stations) so no reading is skipped.
 
 ## Installation
 
-Installed like any ADL plugin — see the core *Plugin Installation* page for all
-methods. The `plugins.toml` entry:
+Installed like any ADL plugin — see [Plugin Installation](https://adl-tool.readthedocs.io/en/latest/developer_guide/plugins/plugin_installation.html) for
+all methods. The `plugins.toml` entry:
 
 ```toml
 [[plugins]]
@@ -69,7 +76,7 @@ After rebuild/restart, confirm with `docker compose exec adl list-plugins`.
 
 In the ADL admin, create a new **WeatherLink Connection**. Base connection
 fields (name, network, timezone, plugin processing settings) are described in
-the core user guide. Plugin-specific fields, under *WeatherLink API
+[Manage Connections](https://adl-tool.readthedocs.io/en/latest/user_guide/manage_connections.html). Plugin-specific fields, under *WeatherLink API
 Credentials*:
 
 | Field | Required | Default | Description |
@@ -204,7 +211,7 @@ configuration faults apart *for this connection specifically*. The screens
 below are rendered by the ADL core, but what they display for a WeatherLink
 connection comes from this plugin — this section shows exactly what you will
 see and what each message means. The core's own messages on the same screens
-are catalogued in the core guide's [Monitoring & Diagnostics](https://adl.readthedocs.io/en/latest/user_guide/monitoring_and_diagnostics.html) page.
+are catalogued in the core guide's [Monitoring & Diagnostics](https://adl-tool.readthedocs.io/en/latest/user_guide/monitoring_and_diagnostics.html) page.
 
 ### Where check results appear
 
