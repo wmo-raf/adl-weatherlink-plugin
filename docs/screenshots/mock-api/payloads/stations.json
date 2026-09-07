@@ -1,0 +1,44 @@
+{
+ "stations": [
+  {
+   "station_id": 1001,
+   "station_id_uuid": "00000000-0000-4000-8000-000000000001",
+   "station_name": "DEMO_KABETE",
+   "product_number": "6100USB",
+   "user_email": "support@meteo.sc",
+   "active": true,
+   "private": false,
+   "recording_interval": 5,
+   "firmware_version": null,
+   "time_zone": "Indian/Mahe",
+   "city": "Machabee",
+   "region": "Glacis",
+   "country": "Seychelles",
+   "latitude": 0,
+   "longitude": 0,
+   "elevation": 0,
+   "gateway_type": "WeatherLink Live",
+   "relationship_type": "Owned"
+  },
+  {
+   "station_id": 1002,
+   "station_id_uuid": "00000000-0000-4000-8000-000000000002",
+   "station_name": "DEMO_LODWAR",
+   "product_number": "6100USB",
+   "user_email": "support@meteo.sc",
+   "active": true,
+   "private": false,
+   "recording_interval": 5,
+   "firmware_version": null,
+   "time_zone": "Indian/Mahe",
+   "city": "Souvenir",
+   "region": "Grand Anse Mahe",
+   "country": "Seychelles",
+   "latitude": 0,
+   "longitude": 0,
+   "elevation": 0,
+   "gateway_type": "WeatherLink Live",
+   "relationship_type": "Owned"
+  }
+ ]
+}
